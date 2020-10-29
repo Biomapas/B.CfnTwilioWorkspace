@@ -24,13 +24,15 @@ class TwilioWorkspaceSingletonFunction(SingletonFunction):
             twilio_account_sid: str,
             twilio_auth_token: str
     ) -> None:
+        self.__name = name
+
         super().__init__(
             scope=scope,
             id=name,
             uuid=f'{name}-uuid',
             function_name=name,
             code=self.__code(),
-            layers=[TwilioLayer(self, f'TwilioLayerFor{name}')],
+            layers=[TwilioLayer(scope, f'TwilioLayerFor{name}')],
             handler='index.handler',
             runtime=Runtime.PYTHON_3_8,
             environment={
@@ -43,3 +45,7 @@ class TwilioWorkspaceSingletonFunction(SingletonFunction):
     def __code(self) -> Code:
         from .source import root
         return Code.from_asset(root)
+
+    @property
+    def function_name(self):
+        return self.__name
