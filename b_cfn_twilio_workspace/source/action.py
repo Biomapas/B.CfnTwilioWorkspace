@@ -1,10 +1,12 @@
 import json
 import logging
 import os
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 
+from twilio.base import values
 from twilio.base.exceptions import TwilioException
 from twilio.rest import Client
+from twilio.rest.taskrouter.v1.workspace import WorkspaceInstance
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +20,16 @@ class Action:
         try:
             self.TWILIO_ACCOUNT_SID = os.environ['TWILIO_ACCOUNT_SID']
             self.TWILIO_AUTH_TOKEN = os.environ['TWILIO_AUTH_TOKEN']
-            self.TWILIO_WORKSPACE_NAME = self.__parameters['TwilioWorkspaceName']
+            self.WORKSPACE_NAME = self.__parameters['WorkspaceName']
+
         except KeyError as ex:
             logger.error(f'Missing environment: {repr(ex)}.')
             raise
+
+        self.EVENT_CALLBACK_URL: str = self.__parameters.get('EventCallbackUrl') or values.unset
+        self.EVENTS_FILTER: List[str] = self.__parameters.get('EventsFilter') or values.unset
+        self.MULTI_TASK_ENABLED: bool = self.__parameters.get('MultiTaskEnabled') or values.unset
+        self.PRIORITIZE_QUEUE_ORDER: WorkspaceInstance.QueueOrder = self.__parameters.get('PrioritizeQueueOrder') or values.unset
 
         self.client = self.__get_twilio_client(self.TWILIO_ACCOUNT_SID, self.TWILIO_AUTH_TOKEN)
 
@@ -35,7 +43,12 @@ class Action:
         """
         logger.info(f'Initiating resource creation with these parameters: {json.dumps(self.__parameters)}.')
 
-        workspace = self.client.taskrouter.workspaces.create(self.TWILIO_WORKSPACE_NAME)
+        workspace = self.client.taskrouter.workspaces.create(
+            friendly_name=self.WORKSPACE_NAME,
+            event_callback_url=self.EVENT_CALLBACK_URL,
+            multi_task_enabled=self.MULTI_TASK_ENABLED,
+            prioritize_queue_order=self.PRIORITIZE_QUEUE_ORDER
+        )
         workspace_sid = workspace.sid
 
         return {'WorkspaceSid': workspace_sid}, workspace_sid
@@ -52,9 +65,12 @@ class Action:
 
         workspace_sid = self.__resource_id
         workspace = self.client.taskrouter.workspaces.get(workspace_sid).fetch()
-
-        if workspace.friendly_name != self.TWILIO_WORKSPACE_NAME:
-            workspace.update(friendly_name=self.TWILIO_WORKSPACE_NAME)
+        workspace.update(
+            friendly_name=self.WORKSPACE_NAME,
+            event_callback_url=self.EVENT_CALLBACK_URL,
+            multi_task_enabled=self.MULTI_TASK_ENABLED,
+            prioritize_queue_order=self.PRIORITIZE_QUEUE_ORDER
+        )
 
         return {'WorkspaceSid': workspace_sid}, workspace_sid
 
