@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from aws_cdk.aws_lambda import Code, SingletonFunction, Runtime
-from aws_cdk.core import Stack
+from aws_cdk.core import Stack, Duration
 
 from b_twilio_sdk_layer.layer import Layer as TwilioLayer
 
@@ -33,6 +33,7 @@ class TwilioWorkspaceSingletonFunction(SingletonFunction):
             function_name=name,
             code=self.__code(),
             layers=[TwilioLayer(scope, f'TwilioLayerFor{name}')],
+            timeout=Duration.minutes(1),
             handler='index.handler',
             runtime=Runtime.PYTHON_3_8,
             environment={
